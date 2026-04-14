@@ -1,6 +1,11 @@
+import cors from "cors";
 import "dotenv/config";
 import express from "express";
-import { createServer as createViteServer } from "vite";
+let createViteServer: any;
+
+if (process.env.NODE_ENV === "development") {
+  createViteServer = require("vite").createServer;
+}
 import path from "path";
 import mongoose from "mongoose";
 import { analyzeMedicalText } from "./src/services/nlpService";
@@ -11,7 +16,8 @@ const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/amhrs"
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  app.use(cors());
+  const PORT = process.env.PORT || 3000;
 
   app.use(express.json());
 
@@ -19,7 +25,9 @@ async function startServer() {
   let isMongoConnected = false;
   console.log("GEMINI_API_KEY is set:", !!process.env.GEMINI_API_KEY);
   try {
-    await mongoose.connect(MONGODB_URI);
+    await mongoose.connect(MONGODB_URI, {
+  serverSelectionTimeoutMS: 5000,
+});
     console.log("Connected to MongoDB");
     isMongoConnected = true;
   } catch (err) {
@@ -667,7 +675,7 @@ async function startServer() {
   }
 
   // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
+  if (process.env.NODE_ENV === "development" && createViteServer) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -681,8 +689,8 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
   });
 }
 
